@@ -21,14 +21,18 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import inch
 
 
- 
+
+
 # PAGE CONFIG
+
 
 st.set_page_config(page_title="AI Water Tracker", layout="wide")
 
 
 
+
 # HELPERS
+
 
 def generate_pdf_report(user_data: dict) -> str:
     """Generate a simple PDF report and return the path."""
@@ -86,7 +90,7 @@ def get_level_from_streak(streak: int) -> str:
     return "Hydration Master 👑"
 
 
-def send_email_reminder(to_email: str, remaining_ml: float, percent: float) -> tuple[bool, str]:
+def send_email_reminder(to_email: str, remaining_ml: float, percent: float):
     """
     Sends an email reminder using Gmail SMTP.
     Requires .env:
@@ -132,7 +136,6 @@ def start_hourly_reminder(email: str, remaining_ml: float, percent: float):
     def loop():
         while st.session_state.get("reminder_running", False):
             ok, msg = send_email_reminder(email, remaining_ml, percent)
-            # store last status for UI
             st.session_state["last_email_status"] = msg
             time.sleep(3600)  # 1 hour
 
@@ -141,57 +144,78 @@ def start_hourly_reminder(email: str, remaining_ml: float, percent: float):
     st.session_state["reminder_thread"] = t
 
 
- 
-# SIDEBAR: USER DETAILS
+
+
+# SIDEBAR: USER DETAILS (UPDATED: START EMPTY)
+
 
 st.sidebar.header("Your Details")
 
-age = st.sidebar.number_input("Age", min_value=1, max_value=100, value=23)
-gender = st.sidebar.selectbox("Gender", ["Female", "Male"])
+# ✅ Start EMPTY (no default like 23)
+age = st.sidebar.number_input("Age", min_value=1, max_value=100, value=None)
+
+# ✅ Start EMPTY choice
+gender = st.sidebar.selectbox("Gender", ["", "Female", "Male"])
 
 height_unit = st.sidebar.radio("Height Unit", ["cm", "ft"])
+
+# ✅ Start EMPTY height
 if height_unit == "cm":
-    height_cm = st.sidebar.number_input("Height (cm)", min_value=50.0, value=170.0)
+    height_cm = st.sidebar.number_input("Height (cm)", min_value=50.0, value=None)
 else:
-    height_ft = st.sidebar.number_input("Height (ft)", min_value=1.0, value=5.5)
-    height_cm = height_ft * 30.48
+    height_ft = st.sidebar.number_input("Height (ft)", min_value=1.0, value=None)
+    height_cm = height_ft * 30.48 if height_ft else None
 
-weight = st.sidebar.number_input("Weight (kg)", min_value=10.0, value=70.0)
+# ✅ Start EMPTY weight
+weight = st.sidebar.number_input("Weight (kg)", min_value=10.0, value=None)
 
-# BMI
-height_m = height_cm / 100
-bmi = weight / (height_m ** 2)
+# Defaults to avoid crash if not filled
+bmi = None
+category = None
+recommended_water = None
 
-if bmi < 18.5:
-    category = "Underweight"
-elif 18.5 <= bmi < 24.9:
-    category = "Normal Weight"
-elif 25 <= bmi < 29.9:
-    category = "Overweight"
+# BMI CALCULATION only if height & weight entered
+if height_cm and weight:
+    height_m = height_cm / 100
+    bmi = weight / (height_m ** 2)
+
+    if bmi < 18.5:
+        category = "Underweight"
+    elif 18.5 <= bmi < 24.9:
+        category = "Normal Weight"
+    elif 25 <= bmi < 29.9:
+        category = "Overweight"
+    else:
+        category = "Obese"
+
+    st.sidebar.write(f"### Your BMI: {bmi:.2f}")
+    st.sidebar.write(f"Category: **{category}**")
+
+    # WATER RECOMMENDATION
+    recommended_water = weight * 35  # simple formula
+    if gender == "Male":
+        recommended_water += 300
+
+    st.sidebar.write(f"Recommended Water: **{recommended_water:.0f} ml**")
 else:
-    category = "Obese"
+    st.sidebar.info("Enter Height + Weight to calculate BMI & recommendation.")
 
-st.sidebar.write(f"### Your BMI: {bmi:.2f}")
-st.sidebar.write(f"Category: **{category}**")
 
-# Water recommendation
-recommended_water = weight * 35  # ml
-if gender == "Male":
-    recommended_water += 300
 
-st.sidebar.write(f"Recommended Water: **{recommended_water:.0f} ml**")
 
- 
-# SIDEBAR: LOG WATER
+# SIDEBAR: LOG WATER (UPDATED: USER ID EMPTY)
+
 
 st.sidebar.header("Log Water Intake")
 
-user_id = st.sidebar.text_input("User ID", value="manali")
+# ✅ start empty
+user_id = st.sidebar.text_input("User ID", value="")
+
 intake_ml = st.sidebar.number_input("Water Intake (ml)", min_value=0, step=100)
 
 if st.sidebar.button("Submit"):
-    if user_id and intake_ml > 0:
-        log_intake(user_id, intake_ml)
+    if user_id.strip() and intake_ml > 0:
+        log_intake(user_id.strip(), intake_ml)
         st.sidebar.success(f"Logged {intake_ml} ml ✅")
 
         agent = WaterIntakeAgent()
@@ -201,19 +225,34 @@ if st.sidebar.button("Submit"):
         st.sidebar.warning("Please enter valid User ID and water amount.")
 
 
- 
+
+
 # MAIN TITLE
- 
+
+
 st.title("💧 AI Water Tracker Dashboard")
 st.markdown("---")
 
 
 
+
+# IMPORTANT CHANGE:
+# ✅ Show NOTHING until User ID is entered
+
+
+if not user_id.strip():
+    st.info("👈 Enter your User ID in the sidebar to start tracking.")
+    st.stop()
+
+
+
+
 # HISTORY SECTION
+
 
 st.header("📋 Water Intake History")
 
-history = get_intake_history(user_id) if user_id else []
+history = get_intake_history(user_id.strip()) if user_id else []
 
 if history:
     # Build dataframe
@@ -229,14 +268,23 @@ if history:
     today_str = datetime.today().strftime("%Y-%m-%d")
     today_total = sum(row[0] for row in history if row[1] == today_str)
 
-    percent = min(today_total / recommended_water, 1.0) if recommended_water > 0 else 0
-    remaining = max(0, recommended_water - today_total)
+    # ✅ If user hasn’t entered height/weight, we can’t calculate goal
+    if recommended_water:
+        percent = min(today_total / recommended_water, 1.0)
+        remaining = max(0, recommended_water - today_total)
+    else:
+        percent = 0
+        remaining = 0
 
     # Daily progress
     st.markdown("## 🎯 Daily Progress")
-    st.progress(percent)
-    st.write(f"**{percent*100:.1f}%** of daily goal completed")
-    st.markdown(f"### 💧 Remaining Water Today: **{int(remaining)} ml**")
+
+    if recommended_water:
+        st.progress(percent)
+        st.write(f"**{percent*100:.1f}%** of daily goal completed")
+        st.markdown(f"### 💧 Remaining Water Today: **{int(remaining)} ml**")
+    else:
+        st.warning("Fill Height + Weight in sidebar to calculate your daily goal and progress.")
 
     # Weekly average (using df mean)
     weekly_avg = df["Water Intake (ml)"].mean()
@@ -244,33 +292,41 @@ if history:
 
     # Health Insight (BMI-based)
     st.markdown("## 🧠 Health Insight")
-    if category == "Underweight":
-        st.warning("You may need balanced nutrition along with proper hydration.")
-    elif category == "Normal Weight":
-        st.success("Your BMI is healthy. Maintain hydration daily.")
-    elif category == "Overweight":
-        st.warning("Proper hydration helps metabolism and weight control.")
-    else:
-        st.error("Consider improving lifestyle and hydration habits.")
 
-    # 
+    if category is None:
+        st.info("Enter Height + Weight to see BMI-based health insight.")
+    else:
+        if category == "Underweight":
+            st.warning("You may need balanced nutrition along with proper hydration.")
+        elif category == "Normal Weight":
+            st.success("Your BMI is healthy. Maintain hydration daily.")
+        elif category == "Overweight":
+            st.warning("Proper hydration helps metabolism and weight control.")
+        else:
+            st.error("Consider improving lifestyle and hydration habits.")
+
+    #
     # STREAK SYSTEM
-    # 
-    streak = calculate_streak(history, recommended_water)
-
+    #
     st.markdown("## 🔥 Hydration Streak")
-    if streak == 0:
-        st.info("Start your hydration streak today 💧")
-    elif streak < 3:
-        st.success(f"**{streak}** day streak! Keep going 💪")
-    elif streak < 7:
-        st.success(f"**{streak}** day streak! You're building consistency 🔥")
-    else:
-        st.success(f"**{streak}** day streak! Hydration Pro 🏆")
+    if recommended_water:
+        streak = calculate_streak(history, recommended_water)
 
-    # 
+        if streak == 0:
+            st.info("Start your hydration streak today 💧")
+        elif streak < 3:
+            st.success(f"**{streak}** day streak! Keep going 💪")
+        elif streak < 7:
+            st.success(f"**{streak}** day streak! You're building consistency 🔥")
+        else:
+            st.success(f"**{streak}** day streak! Hydration Pro 🏆")
+    else:
+        streak = 0
+        st.info("Enter Height + Weight to calculate streak.")
+
+    #
     # GAMIFICATION / LEVEL
-    # 
+    #
     st.markdown("## 🏆 Hydration Level")
     level = get_level_from_streak(streak)
     st.markdown(f"### {level}")
@@ -281,9 +337,7 @@ if history:
     st.progress(progress_to_next)
     st.write(f"{progress_to_next*100:.0f}% towards **Hydration Warrior 🔥**")
 
-    
     # CALENDAR HEATMAP
-     
     st.markdown("## 📅 Hydration Calendar Heatmap")
 
     df2 = df.copy()
@@ -303,9 +357,7 @@ if history:
     )
     st.plotly_chart(fig, use_container_width=True)
 
-    
     # HYDRATION REMINDER (OPTIONAL) - MAIN AREA
-    
     st.markdown("---")
     st.markdown("# 📩 Hydration Reminder (Optional)")
     st.caption("Enter your Gmail to receive reminders. If you leave it empty, no emails will be sent.")
@@ -324,16 +376,18 @@ if history:
             if reminder_email.strip() == "":
                 st.warning("Please enter an email (or keep it empty if you don't want reminders).")
             else:
-                # Send immediately once (first entry)
-                ok, msg = send_email_reminder(reminder_email.strip(), remaining, percent)
-                if ok:
-                    st.success("First reminder sent ✅ (next reminders every 1 hour)")
+                if not recommended_water:
+                    st.warning("Enter Height + Weight first so reminder can include progress + remaining.")
                 else:
-                    st.error(msg)
+                    # Send immediately once
+                    ok, msg = send_email_reminder(reminder_email.strip(), remaining, percent)
+                    if ok:
+                        st.success("First reminder sent ✅ (next reminders every 1 hour)")
+                    else:
+                        st.error(msg)
 
-                # Start hourly loop
-                st.session_state["reminder_running"] = True
-                start_hourly_reminder(reminder_email.strip(), remaining, percent)
+                    st.session_state["reminder_running"] = True
+                    start_hourly_reminder(reminder_email.strip(), remaining, percent)
 
     with colB:
         if st.button("Stop Reminder"):
@@ -343,25 +397,24 @@ if history:
     if st.session_state["last_email_status"]:
         st.info(st.session_state["last_email_status"])
 
-    
     # PDF EXPORT (AFTER REMINDER)
-    
     st.markdown("---")
     st.markdown("## 📄 PDF Health Report Export")
 
     report_data = {
-        "Age": age,
-        "Gender": gender,
-        "Height (cm)": round(height_cm, 2),
-        "Weight (kg)": weight,
-        "BMI": round(bmi, 2),
-        "Category": category,
-        "Recommended Water (ml)": round(recommended_water, 0),
+        "User ID": user_id.strip(),
+        "Age": age if age else "Not Provided",
+        "Gender": gender if gender else "Not Provided",
+        "Height (cm)": round(height_cm, 2) if height_cm else "Not Provided",
+        "Weight (kg)": weight if weight else "Not Provided",
+        "BMI": round(bmi, 2) if bmi else "Not Provided",
+        "Category": category if category else "Not Provided",
+        "Recommended Water (ml)": round(recommended_water, 0) if recommended_water else "Not Provided",
         "Today's Intake (ml)": today_total,
-        "Remaining Today (ml)": int(remaining),
-        "Goal Completion (%)": f"{percent*100:.1f}%",
+        "Remaining Today (ml)": int(remaining) if recommended_water else "Not Provided",
+        "Goal Completion (%)": f"{percent*100:.1f}%" if recommended_water else "Not Provided",
         "Weekly Average (ml)": round(weekly_avg, 0),
-        "Hydration Streak (days)": streak,
+        "Hydration Streak (days)": streak if recommended_water else "Not Provided",
         "Hydration Level": level,
     }
 
