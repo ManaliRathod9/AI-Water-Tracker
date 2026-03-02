@@ -296,7 +296,9 @@ Planned improvements:
 • Behavioral pattern detection  
 
 ---
+# 🌐 Live Demo
 
+👉 **Streamlit App:** [https://your-streamlit-link-here](https://ai-water-tracker-uuytdjw4pkxggaxdqhvryg.streamlit.app/)
 # 👩‍💻 Author
 
 Manali Rathod  
