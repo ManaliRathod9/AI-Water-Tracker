@@ -1,31 +1,34 @@
 # 💧 AI Water Tracker — Powered by Agentic AI
 
-An intelligent hydration assistant built using Python and Streamlit.
+AI Water Tracker is an intelligent hydration assistant built with Python and Streamlit.
 
-This is not just a water tracking dashboard.
+Unlike a traditional tracking dashboard, this system includes an autonomous AI agent that evaluates hydration input, selects a reasoning strategy, and delivers personalized guidance in real time.
 
-It is an AI Agent system that monitors water intake, reasons about hydration behavior, and delivers personalized guidance in real time.
-
-The system is designed to operate in two environments:
+The application is designed to function reliably across environments:
 
 • Full LLM-powered reasoning (local development)  
 • Autonomous fallback reasoning (cloud deployment)
 
+The agent adapts automatically based on system capabilities.
 ---
 
-# 🧠 What Makes This an Agent-Based System?
+# 🧠 Why This Is an Agent-Based System
 
-Traditional dashboards only display data.
+Most dashboards collect data and display results.
 
-This system includes an autonomous component — `WaterIntakeAgent` — that:
+This project introduces a dedicated reasoning layer — `WaterIntakeAgent`.
 
-• Receives hydration input  
-• Interprets context  
-• Selects a reasoning strategy  
-• Generates tailored advice  
-• Adapts to runtime environment  
+The agent is responsible for:
 
-The agent actively decides *how* to respond based on system capabilities.
+• Receiving hydration input  
+• Interpreting intake in context  
+• Selecting an appropriate reasoning method  
+• Generating tailored advice  
+• Adapting to runtime conditions  
+
+The UI does not make decisions.
+
+All evaluation flows through the agent.
 
 ---
 
@@ -84,6 +87,10 @@ LLM contextual reasoning     Rule-based reasoning
         v                           v
 Personalized AI advice        Smart fallback advice
 ```
+
+The system is environment-aware.
+
+It always returns a response, regardless of deployment constraints.
 
 ---
 
@@ -178,7 +185,7 @@ Every intake log triggers reasoning logic.
 
 | Technology | Role in System |
 |------------|---------------|
-| Python 3.13 | Core language |
+| Python 3.10 | Core language |
 | Streamlit | Frontend UI layer |
 | SQLite | Lightweight persistence |
 | Ollama + Llama3 | Local LLM reasoning |
@@ -284,7 +291,6 @@ Planned improvements:
 • Agent memory across days  
 • Trend-based reasoning  
 • Proactive low-hydration alerts  
-• Cloud LLM integration (OpenAI / Groq)  
 • Multi-agent architecture  
 • Adaptive daily goal generation  
 • Behavioral pattern detection  
@@ -294,5 +300,4 @@ Planned improvements:
 # 👩‍💻 Author
 
 Manali Rathod  
-MS in Computer Science  
-Indiana University Bloomington
+
